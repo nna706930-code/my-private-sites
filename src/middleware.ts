@@ -3,7 +3,7 @@ import { verifyToken } from '@/lib/auth';
 
 const PUBLIC_PATHS = ['/login', '/api/auth/login', '/favicon.ico'];
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow static assets, next internal files, and public routes
@@ -35,9 +35,15 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Keep backwards-compatible export if needed
-export { proxy as middleware };
-
 export const config = {
-  matcher: ['/((?!api/auth/login|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };
