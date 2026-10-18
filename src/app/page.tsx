@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import AnimeCard from '@/components/AnimeCard';
 import { AnimeItem } from '@/lib/types';
 import { Flame, Sparkles, TrendingUp, Tv } from 'lucide-react';
 
-export default function HomePage() {
+function HomeContent() {
   const [topAiring, setTopAiring] = useState<AnimeItem[]>([]);
   const [recent, setRecent] = useState<AnimeItem[]>([]);
   const [searchResults, setSearchResults] = useState<AnimeItem[] | null>(null);
@@ -168,5 +168,19 @@ export default function HomePage() {
         <p>Private Anime Streamer Vault &copy; 2026. Free & Private Forever.</p>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+          <div className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }

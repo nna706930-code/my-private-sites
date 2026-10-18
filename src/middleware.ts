@@ -8,9 +8,12 @@ export async function middleware(request: NextRequest) {
 
   // Allow static assets, next internal files, and public routes
   if (
+    pathname === '/login' ||
+    pathname.startsWith('/login/') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
-    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p))
+    pathname.startsWith('/api/auth') ||
+    pathname === '/favicon.ico'
   ) {
     return NextResponse.next();
   }
@@ -18,9 +21,7 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
 
   if (!token) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   const verified = await verifyToken(token);
