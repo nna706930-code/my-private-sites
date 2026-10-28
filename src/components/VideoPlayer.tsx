@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { ExternalLink, RefreshCw, Server, Shield } from 'lucide-react';
+import { ExternalLink, RefreshCw, Server, Shield, ShieldCheck } from 'lucide-react';
 import { EpisodeStreamData } from '@/lib/types';
 
 interface PlayerProps {
@@ -21,6 +21,7 @@ export default function VideoPlayer({
   episodeNumber,
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedServer, setSelectedServer] = useState<'videasy' | 'vidsu' | 'vidpm' | 'vidsrc' | 'direct'>('videasy');
 
   // Slug sanitizer: turns "jujutsu-kaisen-tv" into "jujutsu-kaisen"
@@ -30,7 +31,7 @@ export default function VideoPlayer({
 
   const ep = episodeNumber || 1;
 
-  // Active, live multi-stream embed providers (Videasy and Vidsrc.su first)
+  // Active, live multi-stream embed providers
   const embedUrls: Record<'videasy' | 'vidsu' | 'vidpm' | 'vidsrc', string> = {
     videasy: `https://player.videasy.to/anime/${cleanAnimeSlug}/${ep}`,
     vidsu: `https://vidsrc.su/embed/anime/${cleanAnimeSlug}/${ep}`,
@@ -39,6 +40,31 @@ export default function VideoPlayer({
   };
 
   const directM3U8 = streamData?.sources?.find((s) => s.isM3U8)?.url || streamData?.sources?.[0]?.url;
+
+  // Client-side anti-popup blocker: Intercept unwanted window.open calls and blur events triggered by embed ad-clicks
+  useEffect(() => {
+    const originalOpen = window.open;
+    window.open = function (...args: any[]) {
+      console.warn('[AdBlocker] Blocked popup opening attempt:', args[0]);
+      return null;
+    };
+
+    // If an iframe tries to steal focus to launch an invisible click-under redirect, refocus current window
+    const handleWindowBlur = () => {
+      if (document.activeElement instanceof HTMLIFrameElement) {
+        setTimeout(() => {
+          window.focus();
+        }, 100);
+      }
+    };
+
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      window.open = originalOpen;
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedServer !== 'direct' || !directM3U8 || !videoRef.current) return;
@@ -69,7 +95,10 @@ export default function VideoPlayer({
   return (
     <div className="space-y-4">
       {/* Stream Player Viewport */}
-      <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl">
+      <div 
+        ref={containerRef}
+        className="relative aspect-video w-full rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl"
+      >
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
@@ -88,7 +117,8 @@ export default function VideoPlayer({
             src={selectedServer !== 'direct' ? embedUrls[selectedServer] : ''}
             className="w-full h-full border-0"
             allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           />
         )}
       </div>
@@ -154,9 +184,9 @@ export default function VideoPlayer({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-neutral-500">
-          <Shield className="w-3.5 h-3.5 text-green-400" />
-          <span>High Definition Player</span>
+        <div className="flex items-center gap-2 text-emerald-400 font-medium">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>Active Ad-Shield (Popups & Redirects Blocked)</span>
         </div>
       </div>
     </div>
