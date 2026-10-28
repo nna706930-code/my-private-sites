@@ -21,20 +21,21 @@ export default function VideoPlayer({
   episodeNumber,
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [selectedServer, setSelectedServer] = useState<'vidsrc' | 'vidsu' | 'vidpm' | 'videasy' | 'direct'>('vidsrc');
+  const [selectedServer, setSelectedServer] = useState<'videasy' | 'vidsu' | 'vidpm' | 'vidsrc' | 'direct'>('videasy');
 
+  // Slug sanitizer: turns "jujutsu-kaisen-tv" into "jujutsu-kaisen"
   const cleanAnimeSlug = (animeId || 'jujutsu-kaisen')
     .replace(/-tv$/i, '')
     .replace(/-season-\d+$/i, '');
 
   const ep = episodeNumber || 1;
 
-  // Active, live multi-stream embed providers
-  const embedUrls: Record<'vidsrc' | 'vidsu' | 'vidpm' | 'videasy', string> = {
-    vidsrc: `https://vidsrc.sh/embed/anime/${cleanAnimeSlug}/${ep}`,
+  // Active, live multi-stream embed providers (Videasy and Vidsrc.su first)
+  const embedUrls: Record<'videasy' | 'vidsu' | 'vidpm' | 'vidsrc', string> = {
+    videasy: `https://player.videasy.to/anime/${cleanAnimeSlug}/${ep}`,
     vidsu: `https://vidsrc.su/embed/anime/${cleanAnimeSlug}/${ep}`,
     vidpm: `https://vidsrc.pm/embed/anime/${cleanAnimeSlug}/${ep}`,
-    videasy: `https://player.videasy.to/anime/${cleanAnimeSlug}/${ep}`,
+    vidsrc: `https://vidsrc.sh/embed/anime/${cleanAnimeSlug}/${ep}`,
   };
 
   const directM3U8 = streamData?.sources?.find((s) => s.isM3U8)?.url || streamData?.sources?.[0]?.url;
@@ -99,14 +100,14 @@ export default function VideoPlayer({
           <span className="font-semibold text-neutral-300">Server Selector:</span>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setSelectedServer('vidsrc')}
+              onClick={() => setSelectedServer('videasy')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'vidsrc'
+                selectedServer === 'videasy'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Server 1 (Primary HD)
+              Server 1 (Videasy Fast)
             </button>
             <button
               onClick={() => setSelectedServer('vidsu')}
@@ -116,7 +117,7 @@ export default function VideoPlayer({
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Server 2 (Fast Mirror)
+              Server 2 (VidSU Mirror)
             </button>
             <button
               onClick={() => setSelectedServer('vidpm')}
@@ -129,9 +130,9 @@ export default function VideoPlayer({
               Server 3 (VIP Stream)
             </button>
             <button
-              onClick={() => setSelectedServer('videasy')}
+              onClick={() => setSelectedServer('vidsrc')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'videasy'
+                selectedServer === 'vidsrc'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
