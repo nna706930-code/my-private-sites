@@ -88,7 +88,6 @@ export default function VideoPlayer({
             className="w-full h-full border-0"
             allowFullScreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           />
         )}
       </div>
@@ -156,7 +155,7 @@ export default function VideoPlayer({
 
         <div className="flex items-center gap-2 text-neutral-500">
           <Shield className="w-3.5 h-3.5 text-green-400" />
-          <span>Sandboxed Stream Player</span>
+          <span>High Definition Player</span>
         </div>
       </div>
     </div>
