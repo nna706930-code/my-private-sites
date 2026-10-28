@@ -21,11 +21,22 @@ export default function VideoPlayer({
   episodeNumber,
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [selectedServer, setSelectedServer] = useState<'aniwave' | 'reanime' | 'direct'>('aniwave');
+  const [selectedServer, setSelectedServer] = useState<'vidsrc' | 'vidsu' | 'vidpm' | 'videasy' | 'direct'>('vidsrc');
 
-  // Multi-source mirrors for Aniwave & Re Anime streaming embeds
-  const aniwaveEmbedUrl = `https://vidsrc.to/embed/anime/${animeId}/${episodeNumber || 1}`;
-  const reAnimeEmbedUrl = `https://2embed.cc/embed/anime/${animeId}?ep=${episodeNumber || 1}`;
+  const cleanAnimeSlug = (animeId || 'jujutsu-kaisen')
+    .replace(/-tv$/i, '')
+    .replace(/-season-\d+$/i, '');
+
+  const ep = episodeNumber || 1;
+
+  // Active, live multi-stream embed providers
+  const embedUrls: Record<'vidsrc' | 'vidsu' | 'vidpm' | 'videasy', string> = {
+    vidsrc: `https://vidsrc.sh/embed/anime/${cleanAnimeSlug}/${ep}`,
+    vidsu: `https://vidsrc.su/embed/anime/${cleanAnimeSlug}/${ep}`,
+    vidpm: `https://vidsrc.pm/embed/anime/${cleanAnimeSlug}/${ep}`,
+    videasy: `https://player.videasy.to/anime/${cleanAnimeSlug}/${ep}`,
+  };
+
   const directM3U8 = streamData?.sources?.find((s) => s.isM3U8)?.url || streamData?.sources?.[0]?.url;
 
   useEffect(() => {
@@ -61,7 +72,7 @@ export default function VideoPlayer({
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-neutral-400">Loading stream feeds...</p>
+            <p className="text-sm text-neutral-400">Connecting stream feed...</p>
           </div>
         ) : selectedServer === 'direct' && directM3U8 ? (
           <video
@@ -72,7 +83,8 @@ export default function VideoPlayer({
           />
         ) : (
           <iframe
-            src={selectedServer === 'aniwave' ? aniwaveEmbedUrl : reAnimeEmbedUrl}
+            key={`${selectedServer}-${cleanAnimeSlug}-${ep}`}
+            src={selectedServer !== 'direct' ? embedUrls[selectedServer] : ''}
             className="w-full h-full border-0"
             allowFullScreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -83,29 +95,49 @@ export default function VideoPlayer({
 
       {/* Server & Mirror Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-neutral-900/80 border border-neutral-800 rounded-xl text-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Server className="w-4 h-4 text-purple-400" />
           <span className="font-semibold text-neutral-300">Server Selector:</span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setSelectedServer('aniwave')}
+              onClick={() => setSelectedServer('vidsrc')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'aniwave'
+                selectedServer === 'vidsrc'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Aniwave Mirror
+              Server 1 (Primary HD)
             </button>
             <button
-              onClick={() => setSelectedServer('reanime')}
+              onClick={() => setSelectedServer('vidsu')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'reanime'
+                selectedServer === 'vidsu'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Re Anime Stream
+              Server 2 (Fast Mirror)
+            </button>
+            <button
+              onClick={() => setSelectedServer('vidpm')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                selectedServer === 'vidpm'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'bg-neutral-800 text-neutral-400 hover:text-white'
+              }`}
+            >
+              Server 3 (VIP Stream)
+            </button>
+            <button
+              onClick={() => setSelectedServer('videasy')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                selectedServer === 'videasy'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'bg-neutral-800 text-neutral-400 hover:text-white'
+              }`}
+            >
+              Server 4 (Backup)
             </button>
             {directM3U8 && (
               <button
@@ -124,7 +156,7 @@ export default function VideoPlayer({
 
         <div className="flex items-center gap-2 text-neutral-500">
           <Shield className="w-3.5 h-3.5 text-green-400" />
-          <span>Ad-sandboxed secure iframe</span>
+          <span>Sandboxed Stream Player</span>
         </div>
       </div>
     </div>
