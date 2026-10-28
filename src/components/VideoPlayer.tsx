@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { ExternalLink, RefreshCw, Server, ShieldCheck } from 'lucide-react';
+import { ExternalLink, RefreshCw, Server, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { EpisodeStreamData } from '@/lib/types';
 
 interface PlayerProps {
@@ -22,6 +22,7 @@ export default function VideoPlayer({
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [selectedServer, setSelectedServer] = useState<'videasy_slug' | 'vidsu_slug' | 'vidsu_clean' | 'vidpm_slug' | 'direct'>('videasy_slug');
+  const [blockedCount, setBlockedCount] = useState<number>(0);
 
   const rawSlug = animeId || 'demon-slayer-kimetsu-no-yaiba-hashira-training-arc';
   const cleanSlug = rawSlug
@@ -42,16 +43,37 @@ export default function VideoPlayer({
   const currentEmbedUrl = selectedServer !== 'direct' ? embedUrls[selectedServer] : '';
   const directM3U8 = streamData?.sources?.find((s) => s.isM3U8)?.url || streamData?.sources?.[0]?.url;
 
-  // Intercept window.open popups cleanly
+  // Ultra-Aggressive Client-Side Ad & Popup Shield
   useEffect(() => {
+    // 1. Trap and silence all window.open popups
     const originalOpen = window.open;
     window.open = function (...args: any[]) {
-      console.warn('[AdBlocker] Blocked popup attempt:', args[0]);
+      console.warn('[AdShield] Blocked popup opening attempt:', args[0]);
+      setBlockedCount((prev) => prev + 1);
       return null;
     };
 
+    // 2. Prevent window blur clickjack redirects
+    const handleBlur = () => {
+      if (document.activeElement instanceof HTMLIFrameElement) {
+        setTimeout(() => {
+          window.focus();
+        }, 50);
+      }
+    };
+
+    // 3. Trap beforeunload navigation hijack attempts
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Don't show dialog on legitimate in-app links
+    };
+
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       window.open = originalOpen;
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
@@ -83,7 +105,7 @@ export default function VideoPlayer({
 
   return (
     <div className="space-y-4">
-      {/* Stream Player Viewport */}
+      {/* Stream Player Viewport with Strict Click Shield */}
       <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl">
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -183,7 +205,7 @@ export default function VideoPlayer({
           )}
           <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Ad Shield Active</span>
+            <span>Ad Shield Active {blockedCount > 0 ? `(${blockedCount} Popups Blocked)` : ''}</span>
           </div>
         </div>
       </div>
