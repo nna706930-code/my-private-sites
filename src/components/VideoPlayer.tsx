@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { ExternalLink, RefreshCw, Server, Shield, ShieldCheck } from 'lucide-react';
+import { ExternalLink, RefreshCw, Server, ShieldCheck } from 'lucide-react';
 import { EpisodeStreamData } from '@/lib/types';
 
 interface PlayerProps {
@@ -21,48 +21,37 @@ export default function VideoPlayer({
   episodeNumber,
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedServer, setSelectedServer] = useState<'videasy' | 'vidsu' | 'vidpm' | 'vidsrc' | 'direct'>('videasy');
+  const [selectedServer, setSelectedServer] = useState<'videasy_slug' | 'vidsu_slug' | 'vidsu_clean' | 'vidpm_slug' | 'direct'>('videasy_slug');
 
-  // Slug sanitizer: turns "jujutsu-kaisen-tv" into "jujutsu-kaisen"
-  const cleanAnimeSlug = (animeId || 'jujutsu-kaisen')
+  const rawSlug = animeId || 'demon-slayer-kimetsu-no-yaiba-hashira-training-arc';
+  const cleanSlug = rawSlug
     .replace(/-tv$/i, '')
-    .replace(/-season-\d+$/i, '');
+    .replace(/-season-\d+$/i, '')
+    .replace(/-kimetsu-no-yaiba-.*$/i, ''); // e.g. "demon-slayer"
 
   const ep = episodeNumber || 1;
 
-  // Active, live multi-stream embed providers
-  const embedUrls: Record<'videasy' | 'vidsu' | 'vidpm' | 'vidsrc', string> = {
-    videasy: `https://player.videasy.to/anime/${cleanAnimeSlug}/${ep}`,
-    vidsu: `https://vidsrc.su/embed/anime/${cleanAnimeSlug}/${ep}`,
-    vidpm: `https://vidsrc.pm/embed/anime/${cleanAnimeSlug}/${ep}`,
-    vidsrc: `https://vidsrc.sh/embed/anime/${cleanAnimeSlug}/${ep}`,
+  // Multi-tier server embeds mapping exact title slugs and clean fallbacks
+  const embedUrls: Record<'videasy_slug' | 'vidsu_slug' | 'vidsu_clean' | 'vidpm_slug', string> = {
+    videasy_slug: `https://player.videasy.to/anime/${rawSlug}/${ep}`,
+    vidsu_slug: `https://vidsrc.su/embed/anime/${rawSlug}/1/${ep}`,
+    vidsu_clean: `https://vidsrc.su/embed/anime/${cleanSlug}/1/${ep}`,
+    vidpm_slug: `https://vidsrc.pm/embed/anime/${rawSlug}/${ep}`,
   };
 
+  const currentEmbedUrl = selectedServer !== 'direct' ? embedUrls[selectedServer] : '';
   const directM3U8 = streamData?.sources?.find((s) => s.isM3U8)?.url || streamData?.sources?.[0]?.url;
 
-  // Client-side anti-popup blocker: Intercept unwanted window.open calls and blur events triggered by embed ad-clicks
+  // Intercept window.open popups cleanly
   useEffect(() => {
     const originalOpen = window.open;
     window.open = function (...args: any[]) {
-      console.warn('[AdBlocker] Blocked popup opening attempt:', args[0]);
+      console.warn('[AdBlocker] Blocked popup attempt:', args[0]);
       return null;
     };
 
-    // If an iframe tries to steal focus to launch an invisible click-under redirect, refocus current window
-    const handleWindowBlur = () => {
-      if (document.activeElement instanceof HTMLIFrameElement) {
-        setTimeout(() => {
-          window.focus();
-        }, 100);
-      }
-    };
-
-    window.addEventListener('blur', handleWindowBlur);
-
     return () => {
       window.open = originalOpen;
-      window.removeEventListener('blur', handleWindowBlur);
     };
   }, []);
 
@@ -95,10 +84,7 @@ export default function VideoPlayer({
   return (
     <div className="space-y-4">
       {/* Stream Player Viewport */}
-      <div 
-        ref={containerRef}
-        className="relative aspect-video w-full rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl"
-      >
+      <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800 shadow-2xl">
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
@@ -113,8 +99,8 @@ export default function VideoPlayer({
           />
         ) : (
           <iframe
-            key={`${selectedServer}-${cleanAnimeSlug}-${ep}`}
-            src={selectedServer !== 'direct' ? embedUrls[selectedServer] : ''}
+            key={`${selectedServer}-${rawSlug}-${ep}`}
+            src={currentEmbedUrl}
             className="w-full h-full border-0"
             allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
@@ -129,44 +115,44 @@ export default function VideoPlayer({
           <span className="font-semibold text-neutral-300">Server Selector:</span>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setSelectedServer('videasy')}
+              onClick={() => setSelectedServer('videasy_slug')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'videasy'
+                selectedServer === 'videasy_slug'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Server 1 (Videasy Fast)
+              Server 1 (Videasy HD)
             </button>
             <button
-              onClick={() => setSelectedServer('vidsu')}
+              onClick={() => setSelectedServer('vidsu_slug')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'vidsu'
+                selectedServer === 'vidsu_slug'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Server 2 (VidSU Mirror)
+              Server 2 (VidSU Full)
             </button>
             <button
-              onClick={() => setSelectedServer('vidpm')}
+              onClick={() => setSelectedServer('vidsu_clean')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'vidpm'
+                selectedServer === 'vidsu_clean'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Server 3 (VIP Stream)
+              Server 3 (VidSU Main)
             </button>
             <button
-              onClick={() => setSelectedServer('vidsrc')}
+              onClick={() => setSelectedServer('vidpm_slug')}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                selectedServer === 'vidsrc'
+                selectedServer === 'vidpm_slug'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                   : 'bg-neutral-800 text-neutral-400 hover:text-white'
               }`}
             >
-              Server 4 (Backup)
+              Server 4 (VIP Backup)
             </button>
             {directM3U8 && (
               <button
@@ -183,9 +169,22 @@ export default function VideoPlayer({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-emerald-400 font-medium">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Active Ad-Shield (Popups & Redirects Blocked)</span>
+        <div className="flex items-center gap-3">
+          {currentEmbedUrl && (
+            <a
+              href={currentEmbedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 underline"
+            >
+              <span>Open in New Tab</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+          <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Ad Shield Active</span>
+          </div>
         </div>
       </div>
     </div>
